@@ -101,7 +101,7 @@ class _GarageScreenState extends State<GarageScreen> {
     _setupShown = true;
     String tempVin = ""; String tempCarName = ""; String tempOdo = ""; String tempEmail = "";
     DateTime tempDate = DateTime.now(); int currentStep = 1; 
-    bool isSearching = false; // Loading flag for button
+    bool isSearching = false;
 
     showDialog(context: context, barrierDismissible: false, builder: (context) => StatefulBuilder(builder: (context, setDialogState) {
           if (currentStep == 1) { 
@@ -122,7 +122,7 @@ class _GarageScreenState extends State<GarageScreen> {
                         setDialogState(() { tempCarName = "$year $make $model".trim(); currentStep = 2; });
                       }
                     } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connection Error: Check Internet")));
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connection Error")));
                     } finally {
                       setDialogState(() => isSearching = false);
                     }
@@ -216,10 +216,10 @@ class _GarageScreenState extends State<GarageScreen> {
           Wrap(alignment: WrapAlignment.spaceEvenly, spacing: 12, runSpacing: 15, children: [
             _mainBtn(Icons.local_gas_station, "FUEL LOG", () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FuelLogScreen())).then((_) => _loadAllData()), Colors.purpleAccent),
             _mainBtn(Icons.build_circle, "SERVICES", () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenanceLogScreen())), Colors.redAccent),
+            _mainBtn(Icons.account_balance_wallet, "DOCS", () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen())), Colors.greenAccent), // NEW WALLET BUTTON
             _mainBtn(Icons.list_alt, "SPECS", () => Navigator.push(context, MaterialPageRoute(builder: (context) => SpecsScreen(carVIN: savedVIN, carName: savedCarName, engineParts: engineParts, themeColor: themeAccent))), Colors.orangeAccent),
             _mainBtn(Icons.map, "MAPS", () => _launchUrl("https://www.google.com/maps"), Colors.blue),
             _mainBtn(Icons.menu_book, "MANUAL", () => _launchUrl("https://www.google.com/search?q=$savedCarName+owners+manual+pdf"), Colors.tealAccent),
-            _mainBtn(Icons.assignment, "CARFAX", () => _launchUrl("https://www.carfax.com/vin/${savedVIN.trim()}"), themeAccent), 
           ]),
           const SizedBox(height: 25),
           const Align(alignment: Alignment.centerLeft, child: Text("MAINTENANCE STATUS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey))),
@@ -233,12 +233,10 @@ class _GarageScreenState extends State<GarageScreen> {
           const SizedBox(height: 10),
           GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 1.5, children: ["FRONT", "REAR", "R FRONT QUARTER", "L FRONT QUARTER", "R REAR QUARTER", "L REAR QUARTER", "ENGINE"].map((label) => _photoSquare(label, themeAccent)).toList()),
           const SizedBox(height: 30),
-          // --- ROBUST REPLACE VEHICLE BUTTON FIX ---
           TextButton.icon(onPressed: () async {
             final prefs = await SharedPreferences.getInstance(); 
             await prefs.remove('carName'); await prefs.remove('mileage'); await prefs.remove('carVIN'); await prefs.remove('bannerImage');
             await prefs.remove('conditionPhotos'); await prefs.remove('engineParts'); await prefs.remove('purchaseDate'); await prefs.remove('userEmail');
-            
             setState(() { savedCarName = ""; savedMileage = ""; savedVIN = ""; bannerImagePath = null; photoPaths = {}; engineParts = {}; lastOilChangeAt = 0.0; lastTireRotationAt = 0.0; purchaseDateStr = ""; userEmail = ""; });
             _showSetupDialog();
           }, icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 14), label: const Text("REPLACE VEHICLE", style: TextStyle(color: Colors.redAccent, fontSize: 10))),
@@ -275,16 +273,35 @@ class _GarageScreenState extends State<GarageScreen> {
     bool hasImage = photoPaths.containsKey(label);
     return GestureDetector(onTap: () async {
         showModalBottomSheet(context: context, builder: (context) => SafeArea(child: Wrap(children: [
-          ListTile(leading: const Icon(Icons.camera_alt), title: const Text('Take New Photo'), onTap: () async { Navigator.pop(context); final img = await _picker.pickImage(source: ImageSource.camera); if (img != null) { setState(() { photoPaths[label] = img.path; }); final prefs = await SharedPreferences.getInstance(); await prefs.setString('conditionPhotos', json.encode(photoPaths)); } }),
-          ListTile(leading: const Icon(Icons.photo_library), title: const Text('Choose from Gallery'), onTap: () async { Navigator.pop(context); final img = await _picker.pickImage(source: ImageSource.gallery); if (img != null) { setState(() { photoPaths[label] = img.path; }); final prefs = await SharedPreferences.getInstance(); await prefs.setString('conditionPhotos', json.encode(photoPaths)); } }),
+          ListTile(leading: const Icon(Icons.camera_alt), title: const Text('Take Photo'), onTap: () async { Navigator.pop(context); final img = await _picker.pickImage(source: ImageSource.camera); if (img != null) { setState(() { photoPaths[label] = img.path; }); final prefs = await SharedPreferences.getInstance(); await prefs.setString('conditionPhotos', json.encode(photoPaths)); } }),
+          ListTile(leading: const Icon(Icons.photo_library), title: const Text('Gallery'), onTap: () async { Navigator.pop(context); final img = await _picker.pickImage(source: ImageSource.gallery); if (img != null) { setState(() { photoPaths[label] = img.path; }); final prefs = await SharedPreferences.getInstance(); await prefs.setString('conditionPhotos', json.encode(photoPaths)); } }),
         ])));
       }, child: Container(decoration: BoxDecoration(color: const Color(0xFF1E1E1E), borderRadius: BorderRadius.circular(12), image: hasImage ? DecorationImage(image: FileImage(File(photoPaths[label]!)), fit: BoxFit.cover) : null), child: Stack(children: [
            if (!hasImage) Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_a_photo, size: 16, color: accent), Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold))])),
-           if (label == "ENGINE") Positioned(bottom: 5, right: 5, child: GestureDetector(onTap: () { _showPartsVault(); }, child: CircleAvatar(radius: 12, backgroundColor: accent, child: const Icon(Icons.info_outline, size: 14, color: Colors.white)))),
+           if (label == "ENGINE") Positioned(bottom: 5, right: 5, child: GestureDetector(onTap: () { _showPartsVault(); }, child: CircleAvatar(radius: 12, backgroundColor: accent, child: const Icon(Icons.settings, size: 14, color: Colors.white)))),
          ])));
   }
 
   Future<void> _launchUrl(String urlString) async { final Uri url = Uri.parse(urlString); if (!await launchUrl(url, mode: LaunchMode.externalApplication)) { debugPrint("Error"); } }
+}
+
+// --- NEW WALLET SCREEN FOR DOCUMENTS ---
+class WalletScreen extends StatefulWidget { const WalletScreen({super.key}); @override State<WalletScreen> createState() => _WalletScreenState(); }
+class _WalletScreenState extends State<WalletScreen> {
+  Map<String, String> docs = {}; final ImagePicker _picker = ImagePicker();
+  @override void initState() { super.initState(); _load(); }
+  Future<void> _load() async { final prefs = await SharedPreferences.getInstance(); String? jsonStr = prefs.getString('walletDocs'); if (jsonStr != null) { setState(() { docs = Map<String, String>.from(json.decode(jsonStr)); }); } }
+  Future<void> _pick(String label) async { final img = await _picker.pickImage(source: ImageSource.camera); if (img != null) { setState(() { docs[label] = img.path; }); final prefs = await SharedPreferences.getInstance(); await prefs.setString('walletDocs', json.encode(docs)); } }
+  @override Widget build(BuildContext context) {
+    return Scaffold(appBar: AppBar(title: const Text("DOCS WALLET")), body: ListView(padding: const EdgeInsets.all(16), children: ["INSURANCE", "REGISTRATION", "AAA CARD", "EMERGENCY INFO"].map((label) => _docTile(label)).toList()));
+  }
+  Widget _docTile(String label) {
+    bool has = docs.containsKey(label);
+    return Card(color: const Color(0xFF1E1E1E), margin: const EdgeInsets.only(bottom: 12), child: ListTile(title: Text(label), subtitle: Text(has ? "Image Saved" : "No image"), trailing: Icon(has ? Icons.check_circle : Icons.camera_alt, color: has ? Colors.greenAccent : Colors.grey), onTap: () {
+      if (has) { showDialog(context: context, builder: (context) => AlertDialog(content: Image.file(File(docs[label]!)), actions: [TextButton(onPressed: () => _pick(label), child: const Text("RETAKE")), TextButton(onPressed: () => Navigator.pop(context), child: const Text("CLOSE"))])); } 
+      else { _pick(label); }
+    }));
+  }
 }
 
 // --- LOG SCREENS ---
