@@ -101,24 +101,33 @@ class _GarageScreenState extends State<GarageScreen> {
     _setupShown = true;
     String tempVin = ""; String tempCarName = ""; String tempOdo = ""; String tempEmail = "";
     DateTime tempDate = DateTime.now(); int currentStep = 1; 
+    bool isSearching = false; // Loading flag for button
 
     showDialog(context: context, barrierDismissible: false, builder: (context) => StatefulBuilder(builder: (context, setDialogState) {
           if (currentStep == 1) { 
             return AlertDialog(title: const Text("VEHICLE SETUP"), content: TextField(textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(labelText: "Enter VIN Number"), onChanged: (val) { tempVin = val; }), actions: [
-                ElevatedButton(onPressed: () async {
+                ElevatedButton(
+                  onPressed: isSearching ? null : () async {
                   if (tempVin.isNotEmpty) {
-                    final url = 'https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/$tempVin?format=json';
-                    final response = await http.get(Uri.parse(url));
-                    if (response.statusCode == 200) {
-                      final data = json.decode(response.body);
-                      final results = data['Results'] as List;
-                      String year = results.firstWhere((e) => e['Variable'] == 'Model Year', orElse: () => {'Value': ''})['Value'] ?? "";
-                      String make = results.firstWhere((e) => e['Variable'] == 'Make', orElse: () => {'Value': ''})['Value'] ?? "";
-                      String model = results.firstWhere((e) => e['Variable'] == 'Model', orElse: () => {'Value': ''})['Value'] ?? "";
-                      setDialogState(() { tempCarName = "$year $make $model".trim(); currentStep = 2; });
+                    setDialogState(() => isSearching = true);
+                    try {
+                      final url = 'https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/$tempVin?format=json';
+                      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+                      if (response.statusCode == 200) {
+                        final data = json.decode(response.body);
+                        final results = data['Results'] as List;
+                        String year = results.firstWhere((e) => e['Variable'] == 'Model Year', orElse: () => {'Value': ''})['Value'] ?? "";
+                        String make = results.firstWhere((e) => e['Variable'] == 'Make', orElse: () => {'Value': ''})['Value'] ?? "";
+                        String model = results.firstWhere((e) => e['Variable'] == 'Model', orElse: () => {'Value': ''})['Value'] ?? "";
+                        setDialogState(() { tempCarName = "$year $make $model".trim(); currentStep = 2; });
+                      }
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connection Error: Check Internet")));
+                    } finally {
+                      setDialogState(() => isSearching = false);
                     }
                   }
-                }, child: const Text("FIND CAR"))
+                }, child: isSearching ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text("FIND CAR"))
               ]);
           }
           if (currentStep == 2) { 
@@ -224,8 +233,12 @@ class _GarageScreenState extends State<GarageScreen> {
           const SizedBox(height: 10),
           GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 1.5, children: ["FRONT", "REAR", "R FRONT QUARTER", "L FRONT QUARTER", "R REAR QUARTER", "L REAR QUARTER", "ENGINE"].map((label) => _photoSquare(label, themeAccent)).toList()),
           const SizedBox(height: 30),
+          // --- ROBUST REPLACE VEHICLE BUTTON FIX ---
           TextButton.icon(onPressed: () async {
-            final prefs = await SharedPreferences.getInstance(); await prefs.clear();
+            final prefs = await SharedPreferences.getInstance(); 
+            await prefs.remove('carName'); await prefs.remove('mileage'); await prefs.remove('carVIN'); await prefs.remove('bannerImage');
+            await prefs.remove('conditionPhotos'); await prefs.remove('engineParts'); await prefs.remove('purchaseDate'); await prefs.remove('userEmail');
+            
             setState(() { savedCarName = ""; savedMileage = ""; savedVIN = ""; bannerImagePath = null; photoPaths = {}; engineParts = {}; lastOilChangeAt = 0.0; lastTireRotationAt = 0.0; purchaseDateStr = ""; userEmail = ""; });
             _showSetupDialog();
           }, icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 14), label: const Text("REPLACE VEHICLE", style: TextStyle(color: Colors.redAccent, fontSize: 10))),
