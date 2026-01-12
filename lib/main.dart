@@ -1,3 +1,14 @@
+// =================================================================
+// GloveBox - Your digital glove compartment.
+// Built by: Grumpy, © 2026 Grumpy Gaming
+// Contact: grumpy.gaming.2020@gmail.com
+// 
+// STATUS: ALPHA v0.3.9
+// NOTICE: Use at your own risk. The author is not liable for 
+// any damage to vehicles, persons, or data resulting from 
+// the use of this software.
+// =================================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; 
 import 'dart:convert';
@@ -17,33 +28,28 @@ class NotificationService {
     const initSettings = InitializationSettings(android: androidSettings);
     await _notifications.initialize(initSettings);
     
-    // Request permission for Android 13+ (RAZR Fix)
     await _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
   }
 
   static Future<void> showAlert(String title, String body, bool isStealth) async {
-    // Stealth Mode logic: Subtle vs High Alert
     String displayTitle = isStealth ? "System Sync" : title;
     String displayBody = isStealth ? "Background data refresh complete." : body;
 
     var androidDetails = AndroidNotificationDetails(
       'service_reminders', 
       'Service Reminders',
-      channelDescription: 'Alerts for oil and tire maintenance',
       importance: isStealth ? Importance.low : Importance.max,
       priority: isStealth ? Priority.low : Priority.high,
-      ticker: 'ticker',
     );
 
-    var details = NotificationDetails(android: androidDetails);
-    await _notifications.show(0, displayTitle, displayBody, details);
+    await _notifications.show(0, displayTitle, displayBody, NotificationDetails(android: androidDetails));
   }
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.init(); // Initialize the ringer
+  await NotificationService.init(); 
   runApp(const GloveBoxApp());
 }
 
@@ -126,14 +132,42 @@ class _GarageScreenState extends State<GarageScreen> {
       if (partsJson != null) { engineParts = Map<String, String>.from(json.decode(partsJson)); }
       _isLoading = false; 
     });
-    _checkServiceStatus(); // Check for alerts after data is loaded
+
+    bool disclaimerAccepted = prefs.getBool('disclaimerAccepted') ?? false;
+    if (!disclaimerAccepted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showDisclaimer());
+    }
+    _checkServiceStatus();
   }
 
-  // --- THE BRAINS OF THE NOTIFICATION ---
+  void _showDisclaimer() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("SAFETY & LIABILITY NOTICE"),
+        content: const Text(
+          "GloveBox is in Alpha v0.3.9. By using this tool, you agree:\n\n"
+          "1. Author is NOT liable for any vehicle damage or personal injury.\n"
+          "2. Software is for personal use and CANNOT be sold.\n"
+          "3. You use this software at your own risk.",
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('disclaimerAccepted', true);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text("I AGREE"),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _checkServiceStatus() async {
     double current = double.tryParse(savedMileage) ?? 0.0;
-    
-    // Oil Alert (500 mile warning)
     if (current > 0 && (current - lastOilChangeAt) >= (oilInterval - 500)) {
       int dueIn = (oilInterval - (current - lastOilChangeAt)).toInt();
       NotificationService.showAlert(
@@ -183,7 +217,7 @@ class _GarageScreenState extends State<GarageScreen> {
           return AlertDialog(title: const Text("FINAL DETAILS"), content: Column(mainAxisSize: MainAxisSize.min, children: [
               TextField(keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Current Odometer"), onChanged: (val) { tempOdo = val; }),
               TextField(keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: "Reminder Email"), onChanged: (val) { tempEmail = val; }),
-              ListTile(title: const Text("Purchase Date", style: TextStyle(fontSize: 14)), subtitle: Text("${tempDate.month}/${tempDate.day}/${tempDate.year}"), trailing: const Icon(Icons.calendar_today), onTap: () async {
+              ListTile(title: const Text("Purchase Date"), subtitle: Text("${tempDate.month}/${tempDate.day}/${tempDate.year}"), trailing: const Icon(Icons.calendar_today), onTap: () async {
                   final picked = await showDatePicker(context: context, initialDate: tempDate, firstDate: DateTime(1900), lastDate: DateTime.now());
                   if (picked != null) { setDialogState(() { tempDate = picked; }); }
                 }),
@@ -231,7 +265,7 @@ class _GarageScreenState extends State<GarageScreen> {
     Color themeAccent = widget.isStealth ? Colors.white70 : Colors.blueAccent;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('GLOVEBOX'), centerTitle: true, actions: [IconButton(icon: Icon(widget.isStealth ? Icons.visibility_off : Icons.visibility, color: themeAccent), onPressed: widget.onThemeToggle)]),
+      appBar: AppBar(title: const Text('GLOVEBOX v0.3.9'), centerTitle: true, actions: [IconButton(icon: Icon(widget.isStealth ? Icons.visibility_off : Icons.visibility, color: themeAccent), onPressed: widget.onThemeToggle)]),
       body: SingleChildScrollView(padding: const EdgeInsets.symmetric(horizontal: 24), child: Column(children: [
           Container(height: 240, width: double.infinity, decoration: BoxDecoration(borderRadius: BorderRadius.circular(25), border: Border.all(color: themeAccent.withValues(alpha: 0.3))), clipBehavior: Clip.hardEdge, child: Stack(children: [
               Positioned.fill(child: bannerImagePath != null ? Image.file(File(bannerImagePath!), fit: BoxFit.cover) : Container(color: Colors.black26)),
@@ -302,7 +336,6 @@ class _GarageScreenState extends State<GarageScreen> {
           final prefs = await SharedPreferences.getInstance();
           setState(() { if (type == "Oil") { lastOilChangeAt = curr; } else { lastTireRotationAt = curr; } }); 
           await prefs.setDouble(type == "Oil" ? 'lastOilChange' : 'lastTireRotation', curr);
-          _checkServiceStatus(); // Check alerts again after reset
         }, child: Text(remaining <= 0 ? "RESET NOW" : "$remaining MI (RESET)", style: TextStyle(color: remaining <= 0 ? Colors.redAccent : accent, fontWeight: FontWeight.bold, fontSize: 10))),
       ]),
       const SizedBox(height: 2),
@@ -316,7 +349,7 @@ class _GarageScreenState extends State<GarageScreen> {
     return GestureDetector(onTap: () async {
         showModalBottomSheet(context: context, builder: (context) => SafeArea(child: Wrap(children: [
           ListTile(leading: const Icon(Icons.camera_alt), title: const Text('Take Photo'), onTap: () async { Navigator.pop(context); final img = await _picker.pickImage(source: ImageSource.camera); if (img != null) { setState(() { photoPaths[label] = img.path; }); final prefs = await SharedPreferences.getInstance(); await prefs.setString('conditionPhotos', json.encode(photoPaths)); } }),
-          ListTile(leading: const Icon(Icons.photo_library), title: const Text('Gallery'), onTap: () async { Navigator.pop(context); final img = await _picker.pickImage(source: ImageSource.gallery); if (img != null) { setState(() { photoPaths[label] = img.path; }); final prefs = await SharedPreferences.getInstance(); await prefs.setString('conditionPhotos', json.encode(photoPaths)); } }),
+          ListTile(leading: const Icon(Icons.photo_library), title: const Text('Upload from Gallery'), onTap: () async { Navigator.pop(context); final img = await _picker.pickImage(source: ImageSource.gallery); if (img != null) { setState(() { photoPaths[label] = img.path; }); final prefs = await SharedPreferences.getInstance(); await prefs.setString('conditionPhotos', json.encode(photoPaths)); } }),
         ])));
       }, child: Container(decoration: BoxDecoration(color: const Color(0xFF1E1E1E), borderRadius: BorderRadius.circular(12), image: hasImage ? DecorationImage(image: FileImage(File(photoPaths[label]!)), fit: BoxFit.cover) : null), child: Stack(children: [
            if (!hasImage) Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_a_photo, size: 16, color: accent), Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold))])),
@@ -327,22 +360,18 @@ class _GarageScreenState extends State<GarageScreen> {
   Future<void> _launchUrl(String urlString) async { final Uri url = Uri.parse(urlString); if (!await launchUrl(url, mode: LaunchMode.externalApplication)) { debugPrint("Error"); } }
 }
 
-// --- DOCS WALLET ---
 class WalletScreen extends StatefulWidget { const WalletScreen({super.key}); @override State<WalletScreen> createState() => _WalletScreenState(); }
 class _WalletScreenState extends State<WalletScreen> {
   Map<String, String> docs = {}; final ImagePicker _picker = ImagePicker();
   @override void initState() { super.initState(); _load(); }
   Future<void> _load() async { final prefs = await SharedPreferences.getInstance(); String? jsonStr = prefs.getString('walletDocs'); if (jsonStr != null) { setState(() { docs = Map<String, String>.from(json.decode(jsonStr)); }); } }
-  
   Future<void> _pick(String label) async {
     showModalBottomSheet(context: context, builder: (context) => SafeArea(child: Wrap(children: [
       ListTile(leading: const Icon(Icons.camera_alt), title: const Text('Take Photo'), onTap: () async { Navigator.pop(context); final img = await _picker.pickImage(source: ImageSource.camera); if (img != null) { _saveDoc(label, img.path); } }),
       ListTile(leading: const Icon(Icons.photo_library), title: const Text('Upload from Gallery'), onTap: () async { Navigator.pop(context); final img = await _picker.pickImage(source: ImageSource.gallery); if (img != null) { _saveDoc(label, img.path); } }),
     ])));
   }
-
   void _saveDoc(String label, String path) async { final prefs = await SharedPreferences.getInstance(); setState(() { docs[label] = path; }); await prefs.setString('walletDocs', json.encode(docs)); }
-
   @override Widget build(BuildContext context) {
     return Scaffold(appBar: AppBar(title: const Text("DOCS WALLET")), body: ListView(padding: const EdgeInsets.all(16), children: ["INSURANCE", "REGISTRATION", "AAA CARD", "EMERGENCY INFO"].map((label) => _docTile(label)).toList()));
   }
@@ -355,7 +384,6 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 }
 
-// --- LOG SCREENS ---
 class FuelLogScreen extends StatefulWidget { const FuelLogScreen({super.key}); @override State<FuelLogScreen> createState() => _FuelLogScreenState(); }
 class _FuelLogScreenState extends State<FuelLogScreen> {
   List<FuelEntry> fuelHistory = []; final TextEditingController _gallons = TextEditingController(); final TextEditingController _price = TextEditingController(); final TextEditingController _odo = TextEditingController();
