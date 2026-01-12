@@ -6,9 +6,44 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+// --- NOTIFICATION SERVICE ---
+class NotificationService {
+  static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+
+  static Future<void> init() async {
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidSettings);
+    await _notifications.initialize(initSettings);
+    
+    // Request permission for Android 13+ (RAZR Fix)
+    await _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+  }
+
+  static Future<void> showAlert(String title, String body, bool isStealth) async {
+    // Stealth Mode logic: Subtle vs High Alert
+    String displayTitle = isStealth ? "System Sync" : title;
+    String displayBody = isStealth ? "Background data refresh complete." : body;
+
+    var androidDetails = AndroidNotificationDetails(
+      'service_reminders', 
+      'Service Reminders',
+      channelDescription: 'Alerts for oil and tire maintenance',
+      importance: isStealth ? Importance.low : Importance.max,
+      priority: isStealth ? Priority.low : Priority.high,
+      ticker: 'ticker',
+    );
+
+    var details = NotificationDetails(android: androidDetails);
+    await _notifications.show(0, displayTitle, displayBody, details);
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.init(); // Initialize the ringer
   runApp(const GloveBoxApp());
 }
 
@@ -91,6 +126,22 @@ class _GarageScreenState extends State<GarageScreen> {
       if (partsJson != null) { engineParts = Map<String, String>.from(json.decode(partsJson)); }
       _isLoading = false; 
     });
+    _checkServiceStatus(); // Check for alerts after data is loaded
+  }
+
+  // --- THE BRAINS OF THE NOTIFICATION ---
+  Future<void> _checkServiceStatus() async {
+    double current = double.tryParse(savedMileage) ?? 0.0;
+    
+    // Oil Alert (500 mile warning)
+    if (current > 0 && (current - lastOilChangeAt) >= (oilInterval - 500)) {
+      int dueIn = (oilInterval - (current - lastOilChangeAt)).toInt();
+      NotificationService.showAlert(
+        "Maintenance Alert", 
+        dueIn <= 0 ? "Oil Change is OVERDUE!" : "Oil Change due in $dueIn miles.",
+        widget.isStealth
+      );
+    }
   }
 
   void _showSetupDialog() {
@@ -251,6 +302,7 @@ class _GarageScreenState extends State<GarageScreen> {
           final prefs = await SharedPreferences.getInstance();
           setState(() { if (type == "Oil") { lastOilChangeAt = curr; } else { lastTireRotationAt = curr; } }); 
           await prefs.setDouble(type == "Oil" ? 'lastOilChange' : 'lastTireRotation', curr);
+          _checkServiceStatus(); // Check alerts again after reset
         }, child: Text(remaining <= 0 ? "RESET NOW" : "$remaining MI (RESET)", style: TextStyle(color: remaining <= 0 ? Colors.redAccent : accent, fontWeight: FontWeight.bold, fontSize: 10))),
       ]),
       const SizedBox(height: 2),
@@ -275,7 +327,7 @@ class _GarageScreenState extends State<GarageScreen> {
   Future<void> _launchUrl(String urlString) async { final Uri url = Uri.parse(urlString); if (!await launchUrl(url, mode: LaunchMode.externalApplication)) { debugPrint("Error"); } }
 }
 
-// --- DOCS WALLET (UPDATED WITH GALLERY) ---
+// --- DOCS WALLET ---
 class WalletScreen extends StatefulWidget { const WalletScreen({super.key}); @override State<WalletScreen> createState() => _WalletScreenState(); }
 class _WalletScreenState extends State<WalletScreen> {
   Map<String, String> docs = {}; final ImagePicker _picker = ImagePicker();
