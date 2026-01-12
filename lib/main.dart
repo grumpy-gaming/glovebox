@@ -69,10 +69,7 @@ class _GarageScreenState extends State<GarageScreen> {
   bool _setupShown = false; 
   bool _isLoading = true; 
 
-  @override void initState() { 
-    super.initState(); 
-    _loadAllData(); 
-  }
+  @override void initState() { super.initState(); _loadAllData(); }
 
   Future<void> _loadAllData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -100,14 +97,12 @@ class _GarageScreenState extends State<GarageScreen> {
     if (_setupShown) return;
     _setupShown = true;
     String tempVin = ""; String tempCarName = ""; String tempOdo = ""; String tempEmail = "";
-    DateTime tempDate = DateTime.now(); int currentStep = 1; 
-    bool isSearching = false;
+    DateTime tempDate = DateTime.now(); int currentStep = 1; bool isSearching = false;
 
     showDialog(context: context, barrierDismissible: false, builder: (context) => StatefulBuilder(builder: (context, setDialogState) {
           if (currentStep == 1) { 
             return AlertDialog(title: const Text("VEHICLE SETUP"), content: TextField(textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(labelText: "Enter VIN Number"), onChanged: (val) { tempVin = val; }), actions: [
-                ElevatedButton(
-                  onPressed: isSearching ? null : () async {
+                ElevatedButton(onPressed: isSearching ? null : () async {
                   if (tempVin.isNotEmpty) {
                     setDialogState(() => isSearching = true);
                     try {
@@ -123,9 +118,7 @@ class _GarageScreenState extends State<GarageScreen> {
                       }
                     } catch (e) {
                       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connection Error")));
-                    } finally {
-                      setDialogState(() => isSearching = false);
-                    }
+                    } finally { setDialogState(() => isSearching = false); }
                   }
                 }, child: isSearching ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text("FIND CAR"))
               ]);
@@ -171,7 +164,7 @@ class _GarageScreenState extends State<GarageScreen> {
 
   void _showPartsVault() {
     final List<String> partLabels = ["Oil Filter", "Spark Plugs", "Air Filter", "Cabin Filter", "Oil Type/Weight"];
-    showDialog(context: context, builder: (context) => AlertDialog(title: const Text("ENGINE PARTS VAULT"), content: SizedBox(width: double.maxFinite, child: ListView(shrinkWrap: true, children: partLabels.map((label) => TextField(controller: TextEditingController(text: engineParts[label]), decoration: InputDecoration(labelText: label, hintText: "Enter Part #"), onChanged: (val) { engineParts[label] = val; })).toList())), actions: [ElevatedButton(onPressed: () async {
+    showDialog(context: context, builder: (context) => AlertDialog(title: const Text("PARTS VAULT"), content: SizedBox(width: double.maxFinite, child: ListView(shrinkWrap: true, children: partLabels.map((label) => TextField(controller: TextEditingController(text: engineParts[label]), decoration: InputDecoration(labelText: label, hintText: "Enter Part #"), onChanged: (val) { engineParts[label] = val; })).toList())), actions: [ElevatedButton(onPressed: () async {
         final prefs = await SharedPreferences.getInstance(); await prefs.setString('engineParts', json.encode(engineParts));
         if (context.mounted) { Navigator.pop(context); }
       }, child: const Text("SAVE SPECS"))]));
@@ -182,9 +175,7 @@ class _GarageScreenState extends State<GarageScreen> {
     if (!_isLoading && savedCarName.isEmpty && !_setupShown) { 
       Future.delayed(Duration.zero, () { if (mounted && savedCarName.isEmpty) { _showSetupDialog(); } }); 
     }
-
     if (_isLoading) { return const Scaffold(body: Center(child: CircularProgressIndicator())); }
-
     String displayDate = purchaseDateStr.isNotEmpty ? "${DateTime.parse(purchaseDateStr).month}/${DateTime.parse(purchaseDateStr).day}/${DateTime.parse(purchaseDateStr).year}" : "--/--/----";
     Color themeAccent = widget.isStealth ? Colors.white70 : Colors.blueAccent;
 
@@ -216,7 +207,7 @@ class _GarageScreenState extends State<GarageScreen> {
           Wrap(alignment: WrapAlignment.spaceEvenly, spacing: 12, runSpacing: 15, children: [
             _mainBtn(Icons.local_gas_station, "FUEL LOG", () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FuelLogScreen())).then((_) => _loadAllData()), Colors.purpleAccent),
             _mainBtn(Icons.build_circle, "SERVICES", () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenanceLogScreen())), Colors.redAccent),
-            _mainBtn(Icons.account_balance_wallet, "DOCS", () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen())), Colors.greenAccent), // NEW WALLET BUTTON
+            _mainBtn(Icons.account_balance_wallet, "DOCS", () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen())), Colors.greenAccent),
             _mainBtn(Icons.list_alt, "SPECS", () => Navigator.push(context, MaterialPageRoute(builder: (context) => SpecsScreen(carVIN: savedVIN, carName: savedCarName, engineParts: engineParts, themeColor: themeAccent))), Colors.orangeAccent),
             _mainBtn(Icons.map, "MAPS", () => _launchUrl("https://www.google.com/maps"), Colors.blue),
             _mainBtn(Icons.menu_book, "MANUAL", () => _launchUrl("https://www.google.com/search?q=$savedCarName+owners+manual+pdf"), Colors.tealAccent),
@@ -231,12 +222,11 @@ class _GarageScreenState extends State<GarageScreen> {
           const SizedBox(height: 25),
           const Align(alignment: Alignment.centerLeft, child: Text("CONDITION RECORD", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey))),
           const SizedBox(height: 10),
-          GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 1.5, children: ["FRONT", "REAR", "R FRONT QUARTER", "L FRONT QUARTER", "R REAR QUARTER", "L REAR QUARTER", "ENGINE"].map((label) => _photoSquare(label, themeAccent)).toList()),
+          GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 1.5, children: ["FRONT", "REAR", "R FRONT", "L FRONT", "R REAR", "L REAR", "ENGINE"].map((label) => _photoSquare(label, themeAccent)).toList()),
           const SizedBox(height: 30),
           TextButton.icon(onPressed: () async {
             final prefs = await SharedPreferences.getInstance(); 
-            await prefs.remove('carName'); await prefs.remove('mileage'); await prefs.remove('carVIN'); await prefs.remove('bannerImage');
-            await prefs.remove('conditionPhotos'); await prefs.remove('engineParts'); await prefs.remove('purchaseDate'); await prefs.remove('userEmail');
+            await prefs.clear();
             setState(() { savedCarName = ""; savedMileage = ""; savedVIN = ""; bannerImagePath = null; photoPaths = {}; engineParts = {}; lastOilChangeAt = 0.0; lastTireRotationAt = 0.0; purchaseDateStr = ""; userEmail = ""; });
             _showSetupDialog();
           }, icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 14), label: const Text("REPLACE VEHICLE", style: TextStyle(color: Colors.redAccent, fontSize: 10))),
@@ -285,20 +275,29 @@ class _GarageScreenState extends State<GarageScreen> {
   Future<void> _launchUrl(String urlString) async { final Uri url = Uri.parse(urlString); if (!await launchUrl(url, mode: LaunchMode.externalApplication)) { debugPrint("Error"); } }
 }
 
-// --- NEW WALLET SCREEN FOR DOCUMENTS ---
+// --- DOCS WALLET (UPDATED WITH GALLERY) ---
 class WalletScreen extends StatefulWidget { const WalletScreen({super.key}); @override State<WalletScreen> createState() => _WalletScreenState(); }
 class _WalletScreenState extends State<WalletScreen> {
   Map<String, String> docs = {}; final ImagePicker _picker = ImagePicker();
   @override void initState() { super.initState(); _load(); }
   Future<void> _load() async { final prefs = await SharedPreferences.getInstance(); String? jsonStr = prefs.getString('walletDocs'); if (jsonStr != null) { setState(() { docs = Map<String, String>.from(json.decode(jsonStr)); }); } }
-  Future<void> _pick(String label) async { final img = await _picker.pickImage(source: ImageSource.camera); if (img != null) { setState(() { docs[label] = img.path; }); final prefs = await SharedPreferences.getInstance(); await prefs.setString('walletDocs', json.encode(docs)); } }
+  
+  Future<void> _pick(String label) async {
+    showModalBottomSheet(context: context, builder: (context) => SafeArea(child: Wrap(children: [
+      ListTile(leading: const Icon(Icons.camera_alt), title: const Text('Take Photo'), onTap: () async { Navigator.pop(context); final img = await _picker.pickImage(source: ImageSource.camera); if (img != null) { _saveDoc(label, img.path); } }),
+      ListTile(leading: const Icon(Icons.photo_library), title: const Text('Upload from Gallery'), onTap: () async { Navigator.pop(context); final img = await _picker.pickImage(source: ImageSource.gallery); if (img != null) { _saveDoc(label, img.path); } }),
+    ])));
+  }
+
+  void _saveDoc(String label, String path) async { final prefs = await SharedPreferences.getInstance(); setState(() { docs[label] = path; }); await prefs.setString('walletDocs', json.encode(docs)); }
+
   @override Widget build(BuildContext context) {
     return Scaffold(appBar: AppBar(title: const Text("DOCS WALLET")), body: ListView(padding: const EdgeInsets.all(16), children: ["INSURANCE", "REGISTRATION", "AAA CARD", "EMERGENCY INFO"].map((label) => _docTile(label)).toList()));
   }
   Widget _docTile(String label) {
     bool has = docs.containsKey(label);
-    return Card(color: const Color(0xFF1E1E1E), margin: const EdgeInsets.only(bottom: 12), child: ListTile(title: Text(label), subtitle: Text(has ? "Image Saved" : "No image"), trailing: Icon(has ? Icons.check_circle : Icons.camera_alt, color: has ? Colors.greenAccent : Colors.grey), onTap: () {
-      if (has) { showDialog(context: context, builder: (context) => AlertDialog(content: Image.file(File(docs[label]!)), actions: [TextButton(onPressed: () => _pick(label), child: const Text("RETAKE")), TextButton(onPressed: () => Navigator.pop(context), child: const Text("CLOSE"))])); } 
+    return Card(color: const Color(0xFF1E1E1E), margin: const EdgeInsets.only(bottom: 12), child: ListTile(title: Text(label), subtitle: Text(has ? "Document Saved" : "No image"), trailing: Icon(has ? Icons.check_circle : Icons.add_a_photo, color: has ? Colors.greenAccent : Colors.grey), onTap: () {
+      if (has) { showDialog(context: context, builder: (context) => AlertDialog(content: Image.file(File(docs[label]!)), actions: [TextButton(onPressed: () => _pick(label), child: const Text("REPLACE")), TextButton(onPressed: () => Navigator.pop(context), child: const Text("CLOSE"))])); } 
       else { _pick(label); }
     }));
   }
@@ -307,10 +306,7 @@ class _WalletScreenState extends State<WalletScreen> {
 // --- LOG SCREENS ---
 class FuelLogScreen extends StatefulWidget { const FuelLogScreen({super.key}); @override State<FuelLogScreen> createState() => _FuelLogScreenState(); }
 class _FuelLogScreenState extends State<FuelLogScreen> {
-  List<FuelEntry> fuelHistory = [];
-  final TextEditingController _gallons = TextEditingController();
-  final TextEditingController _price = TextEditingController();
-  final TextEditingController _odo = TextEditingController();
+  List<FuelEntry> fuelHistory = []; final TextEditingController _gallons = TextEditingController(); final TextEditingController _price = TextEditingController(); final TextEditingController _odo = TextEditingController();
   @override void initState() { super.initState(); _loadFuel(); }
   Future<void> _loadFuel() async { final prefs = await SharedPreferences.getInstance(); final List<String>? stored = prefs.getStringList('fuelHistory'); if (stored != null) { setState(() { fuelHistory = stored.map((e) => FuelEntry.fromJson(json.decode(e))).toList(); }); } }
   @override Widget build(BuildContext context) {
@@ -330,9 +326,7 @@ class _FuelLogScreenState extends State<FuelLogScreen> {
 
 class MaintenanceLogScreen extends StatefulWidget { const MaintenanceLogScreen({super.key}); @override State<MaintenanceLogScreen> createState() => _MaintenanceLogScreenState(); }
 class _MaintenanceLogScreenState extends State<MaintenanceLogScreen> {
-  List<ServiceEntry> history = [];
-  final TextEditingController _task = TextEditingController();
-  final TextEditingController _odo = TextEditingController();
+  List<ServiceEntry> history = []; final TextEditingController _task = TextEditingController(); final TextEditingController _odo = TextEditingController();
   @override void initState() { super.initState(); _load(); }
   Future<void> _load() async { final prefs = await SharedPreferences.getInstance(); final List<String>? stored = prefs.getStringList('serviceHistory'); if (stored != null) { setState(() { history = stored.map((e) => ServiceEntry.fromJson(json.decode(e))).toList(); }); } }
   @override Widget build(BuildContext context) {
@@ -348,11 +342,7 @@ class _MaintenanceLogScreenState extends State<MaintenanceLogScreen> {
   }
 }
 
-class SpecsScreen extends StatefulWidget { 
-  final String carVIN; final String carName; final Map<String, String> engineParts; final Color themeColor;
-  const SpecsScreen({super.key, required this.carVIN, required this.carName, required this.engineParts, required this.themeColor});
-  @override State<SpecsScreen> createState() => _SpecsScreenState();
-}
+class SpecsScreen extends StatefulWidget { final String carVIN; final String carName; final Map<String, String> engineParts; final Color themeColor; const SpecsScreen({super.key, required this.carVIN, required this.carName, required this.engineParts, required this.themeColor}); @override State<SpecsScreen> createState() => _SpecsScreenState(); }
 class _SpecsScreenState extends State<SpecsScreen> {
   Map<String, String> specs = {};
   @override void initState() { super.initState(); _load(); }
