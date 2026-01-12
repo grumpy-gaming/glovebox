@@ -11,7 +11,7 @@
 
 ---
 
-## 🚀 Alpha Test v3.8.0
+## 🚀 Alpha Test v0.3.9
 Welcome to the latest alpha! This build is hardware-optimized for modern Android devices (including folding displays like the RAZR 2025).
 
 ### 📍 Alpha Roadmap
@@ -22,6 +22,23 @@ Welcome to the latest alpha! This build is hardware-optimized for modern Android
 - [x] **Parts Vault**: Digital "Wallet" for engine specs, filters, and spark plug part numbers.
 - [x] **Condition Record**: 7-photo grid for 360° vehicle documentation.
 - [x] **Stealth Mode**: One-touch toggle for low-profile visual usage.
+
+---
+
+## 🗺️ 2026 Roadmap
+
+### 📦 Phase 0: Foundations (COMPLETED)
+- [x] **Universal Branding:** Shifted from Mustang-only to multi-vehicle support.
+- [x] **Document Wallet:** Added gallery/camera upload logic.
+- [x] **Licensing:** Added MIT License for Alpha protection. (NEW)
+
+### 🔔 Phase 1: Smart Notifications (IN PROGRESS)
+- [x] **Service Triggers:** Local push notifications for oil/tire intervals.
+- [ ] **Beta Lockdown:** Implement "Beta Key" requirement or expiration logic.
+
+### 💰 Phase 2: Monetization & Store
+- [ ] **Play Store Release:** Final production build with secure licensing.
+- [ ] **Paid Tier:** Integration of Google Play Billing for the finished release.
 
 ---
 
